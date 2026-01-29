@@ -353,10 +353,10 @@ class SynthesizerAgent(BaseAgent):
     Synthesizer agent: Creates final report from all agent outputs and knowledge graph.
     This is the "Chairman" agent that produces the final output.
     """
-    
+
     def __init__(self, model: str = "qwen2.5:7b"):
         super().__init__("synthesizer", model)
-        self.system_prompt = """You are a research synthesizer. Your job is to create 
+        self.system_prompt = """You are a research synthesizer. Your job is to create
 a comprehensive, well-cited research report from multiple agent analyses and a knowledge graph.
 
 Your report should:
@@ -368,7 +368,23 @@ Your report should:
 6. Include an executive summary
 
 Be balanced, objective, and intellectually honest about uncertainty."""
-    
+
+    async def analyze(
+        self,
+        query: str,
+        sources: List[Source],
+        **kwargs
+    ) -> AgentResult:
+        """
+        Synthesizer doesn't analyze sources directly - it synthesizes other agent outputs.
+        This method exists to satisfy the abstract base class requirement.
+        """
+        return AgentResult(
+            agent_name=self.name,
+            summary="Synthesizer does not analyze sources directly. Use synthesize() method.",
+            confidence=0.0
+        )
+
     async def synthesize(
         self,
         query: str,
