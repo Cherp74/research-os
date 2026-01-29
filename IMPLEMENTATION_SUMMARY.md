@@ -22,13 +22,21 @@ A complete, production-ready multi-agent research system that runs locally on yo
 
 #### Agents
 
-| Agent | File | Role |
-|-------|------|------|
-| **Scout** | `app/agents/specialized.py` | Finds trends, diverse perspectives |
-| **Skeptic** | `app/agents/specialized.py` | Identifies biases, contradictions |
-| **Analyst** | `app/agents/specialized.py` | Extracts structured claims |
-| **Synthesizer** | `app/agents/specialized.py` | Generates final report |
-| **Base** | `app/agents/base.py` | Ollama integration, agent orchestrator |
+| Agent | File | Role | Default Model |
+|-------|------|------|---------------|
+| **Scout** | `app/agents/specialized.py` | Finds trends, diverse perspectives | Gemini Flash 1.5 |
+| **Skeptic** | `app/agents/specialized.py` | Identifies biases, contradictions | DeepSeek Chat |
+| **Analyst** | `app/agents/specialized.py` | Extracts structured claims | Qwen 2.5 72B |
+| **Synthesizer** | `app/agents/specialized.py` | Generates final report | Claude Opus 4 |
+| **Base** | `app/agents/base.py` | LLM provider abstraction, agent orchestrator | - |
+
+#### Configuration
+
+| Component | File | Description |
+|-----------|------|-------------|
+| **Settings** | `app/core/config.py` | Pydantic-settings for environment config |
+| **Planner** | `app/core/planner.py` | Query understanding and decomposition |
+| **Environment** | `.env` | API keys and model configuration |
 
 #### API
 
@@ -121,15 +129,19 @@ research-os/
 ├── README.md                    # Installation and usage guide
 ├── IMPLEMENTATION_SUMMARY.md    # This file
 ├── backend/
+│   ├── .env                     # Environment config (create from .env.example)
+│   ├── .env.example             # Environment template
 │   ├── app/
 │   │   ├── __init__.py
 │   │   ├── main.py              # FastAPI app with WebSocket
 │   │   ├── agents/
 │   │   │   ├── __init__.py
-│   │   │   ├── base.py          # Base agent + orchestrator
+│   │   │   ├── base.py          # Base agent + LLM provider abstraction
 │   │   │   └── specialized.py   # Scout, Skeptic, Analyst, Synthesizer
 │   │   ├── core/
 │   │   │   ├── __init__.py
+│   │   │   ├── config.py        # Settings (pydantic-settings)
+│   │   │   ├── planner.py       # Query understanding and decomposition
 │   │   │   ├── search.py        # DuckDuckGo search
 │   │   │   ├── crawler.py       # Async web crawler
 │   │   │   ├── curator.py       # Source curation
@@ -170,9 +182,10 @@ research-os/
 ## Key Features Implemented
 
 ### 1. Multi-Agent System
-- ✅ Scout, Skeptic, Analyst agents
+- ✅ Scout, Skeptic, Analyst, Synthesizer agents
 - ✅ Parallel execution
-- ✅ Ollama integration (local LLM)
+- ✅ Multi-provider support (OpenRouter + Ollama fallback)
+- ✅ Per-agent model configuration
 - ✅ JSON-structured outputs
 
 ### 2. Knowledge Graph
@@ -217,19 +230,37 @@ research-os/
 
 ## Installation
 
-### 1. Install Ollama
+### 1. Setup Backend
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 2. Configure LLM Provider
+
+**Option A: OpenRouter (Recommended)**
+```bash
+cp .env.example .env
+# Edit .env and add your OpenRouter API key
+```
+
+Default model configuration:
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| Scout | `google/gemini-flash-1.5` | Fast, broad search |
+| Skeptic | `deepseek/deepseek-chat` | Critical reasoning |
+| Analyst | `qwen/qwen-2.5-72b-instruct` | Structured extraction |
+| Synthesizer | `anthropic/claude-opus-4` | Final report synthesis |
+
+**Option B: Ollama (Local/Free)**
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh
 ollama pull qwen2.5:7b
 ollama pull nomic-embed-text
-```
 
-### 2. Setup Backend
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+# Set LLM_PROVIDER=ollama in .env
 ```
 
 ### 3. Setup Frontend
@@ -284,8 +315,12 @@ python test_components.py
 
 ## Cost
 
-- **Free**: Uses DuckDuckGo (no API key), Ollama (local)
-- **Optional**: DeepSeek API for synthesis (~$0.50/research)
+- **Free tier**: Uses DuckDuckGo (no API key), Ollama (local models)
+- **OpenRouter**: Estimated ~$0.50-2.00 per research session depending on depth
+  - Gemini Flash: ~$0.10/M tokens
+  - DeepSeek: ~$0.14/M tokens
+  - Qwen 72B: ~$0.50/M tokens
+  - Claude Opus: ~$15/M tokens (used only for final synthesis)
 
 ## License
 
