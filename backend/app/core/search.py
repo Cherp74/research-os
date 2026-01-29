@@ -64,10 +64,29 @@ class SearchEngine:
         """
         results = []
 
-        # Try Tavily first if configured
+        # Try OpenRouter web search first if configured
+        if settings.search_provider == "openrouter" and settings.openrouter_api_key:
+            try:
+                or_results = await self._search_openrouter(query, max_results)
+                results.extend(or_results)
+                logger.info(
+                    "OpenRouter web search completed",
+                    query=query,
+                    result_count=len(or_results)
+                )
+                if len(results) >= max_results:
+                    return results[:max_results]
+            except Exception as e:
+                logger.warning(
+                    "OpenRouter search failed, falling back",
+                    query=query,
+                    error=str(e)
+                )
+
+        # Try Tavily if configured
         if settings.search_provider == "tavily" and settings.tavily_api_key:
             try:
-                tavily_results = await self._search_tavily(query, max_results)
+                tavily_results = await self._search_tavily(query, max_results - len(results))
                 results.extend(tavily_results)
                 logger.info(
                     "Tavily search completed",
@@ -116,6 +135,77 @@ class SearchEngine:
             )
 
         return results[:max_results]
+
+    async def _search_openrouter(
+        self,
+        query: str,
+        max_results: int
+    ) -> List[SearchResult]:
+        """Search using OpenRouter web search plugin (Exa-powered)."""
+        import json
+        import re
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            # Use a fast model with web search plugin
+            response = await client.post(
+                f"{settings.openrouter_base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.openrouter_api_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://research-os.local",
+                    "X-Title": "Research OS"
+                },
+                json={
+                    "model": "google/gemini-flash-1.5",
+                    "plugins": [
+                        {
+                            "id": "web",
+                            "max_results": max_results
+                        }
+                    ],
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": f"""Search the web for: {query}
+
+Return a JSON array of the most relevant results. Each result should have:
+- title: page title
+- url: full URL
+- snippet: brief description
+
+Format:
+```json
+[{{"title": "...", "url": "...", "snippet": "..."}}, ...]
+```
+
+Return ONLY the JSON array, no other text."""
+                        }
+                    ],
+                    "temperature": 0.1
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            content = data["choices"][0]["message"]["content"]
+
+            # Parse JSON from response
+            json_match = re.search(r'\[[\s\S]*\]', content)
+            if json_match:
+                results_data = json.loads(json_match.group())
+                return [
+                    SearchResult(
+                        title=r.get("title", ""),
+                        url=r.get("url", ""),
+                        snippet=r.get("snippet", ""),
+                        source="openrouter",
+                        rank=i
+                    )
+                    for i, r in enumerate(results_data)
+                    if r.get("url")
+                ]
+
+            return []
 
     async def _search_tavily(
         self,

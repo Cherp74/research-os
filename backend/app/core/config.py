@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen2.5:7b"
 
     # Search settings
-    search_provider: str = "tavily"  # "tavily" or "duckduckgo"
+    search_provider: str = "openrouter"  # "openrouter", "tavily", or "duckduckgo"
     tavily_api_key: Optional[str] = None
 
     # Request settings
