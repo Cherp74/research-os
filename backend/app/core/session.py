@@ -57,7 +57,9 @@ class ResearchSessionManager:
         """Emit event to WebSocket if connected."""
         if self.websocket:
             try:
-                await self.websocket.send_json(event.dict())
+                # Use model_dump with mode='json' for proper serialization
+                data = event.model_dump(mode='json')
+                await self.websocket.send_json(data)
             except Exception as e:
                 logger.warning(f"Failed to emit event: {e}")
     

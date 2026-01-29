@@ -99,8 +99,17 @@ export function ProgressTracker({ phase, message, progress }: ProgressTrackerPro
   };
   const Icon = config.icon;
 
-  const phases = ['planning', 'searching', 'extracting', 'verifying', 'synthesizing', 'complete'];
-  const currentPhaseIndex = phases.indexOf(phase);
+  const phases = [
+    { key: 'planning', label: 'Plan' },
+    { key: 'searching', label: 'Search' },
+    { key: 'crawling', label: 'Crawl' },
+    { key: 'curating', label: 'Curate' },
+    { key: 'extracting', label: 'Extract' },
+    { key: 'verifying', label: 'Verify' },
+    { key: 'synthesizing', label: 'Synth' },
+    { key: 'complete', label: 'Done' },
+  ];
+  const currentPhaseIndex = phases.findIndex(p => p.key === phase);
 
   return (
     <div className="w-full">
@@ -141,27 +150,27 @@ export function ProgressTracker({ phase, message, progress }: ProgressTrackerPro
         {/* Phase Indicators */}
         <div className="flex justify-between">
           {phases.map((p, i) => {
-            const isActive = phase === p;
+            const isActive = phase === p.key;
             const isPast = currentPhaseIndex > i;
             const isComplete = phase === 'complete';
-            
+
             return (
-              <div 
-                key={p}
-                className="flex flex-col items-center gap-2"
+              <div
+                key={p.key}
+                className="flex flex-col items-center gap-1.5"
               >
-                <div 
+                <div
                   className={`
-                    w-3 h-3 rounded-full transition-all duration-300
-                    ${isActive ? `${config.bgColor} scale-125 ring-4 ring-${config.color.split('-')[1]}-100` : 
+                    w-2.5 h-2.5 rounded-full transition-all duration-300
+                    ${isActive ? `${config.bgColor} scale-150 ring-4 ring-opacity-30 ring-current` :
                       isPast || isComplete ? 'bg-green-500' : 'bg-gray-300'}
                   `}
                 />
-                <span className={`text-[10px] uppercase tracking-wider font-medium
-                  ${isActive ? 'text-gray-900' : 
+                <span className={`text-xs font-medium
+                  ${isActive ? 'text-gray-900' :
                     isPast || isComplete ? 'text-green-600' : 'text-gray-400'}
                 `}>
-                  {p.slice(0, 4)}
+                  {p.label}
                 </span>
               </div>
             );
