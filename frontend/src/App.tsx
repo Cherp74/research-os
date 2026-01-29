@@ -88,8 +88,15 @@ function App() {
   const handleStartResearch = (planningData: PlanningData) => {
     // Combine all sub-questions into the main query
     const combinedQuery = planningData.userModifiedQuery;
-    
-    startResearch(combinedQuery, 'standard', 30);
+
+    // Map mode to source count
+    const sourceCount = {
+      quick: 15,
+      standard: 30,
+      deep: 50
+    }[planningData.mode] || 30;
+
+    startResearch(combinedQuery, planningData.mode, sourceCount);
     setPlanningComplete(true);
     setActiveTab('overview');
   };

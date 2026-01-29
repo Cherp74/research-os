@@ -30,6 +30,7 @@ interface PlanningData {
   customAngle: string;
   subQuestions: string[];
   userModifiedSubQuestions: string[];
+  mode: 'quick' | 'standard' | 'deep';
 }
 
 interface QueryBuilderProps {
@@ -46,8 +47,9 @@ export function QueryBuilder({ onSubmit, isResearching }: QueryBuilderProps) {
   const [query, setQuery] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedMode, setSelectedMode] = useState<'quick' | 'standard' | 'deep'>('standard');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
+
   // Planning data
   const [planningData, setPlanningData] = useState<PlanningData>({
     originalQuery: '',
@@ -163,7 +165,7 @@ export function QueryBuilder({ onSubmit, isResearching }: QueryBuilderProps) {
   };
 
   const startResearch = () => {
-    onSubmit(planningData);
+    onSubmit({ ...planningData, mode: selectedMode });
   };
 
   const reset = () => {
@@ -617,20 +619,26 @@ export function QueryBuilder({ onSubmit, isResearching }: QueryBuilderProps) {
             </label>
             <div className="grid grid-cols-3 gap-4">
               {[
-                { id: 'quick', label: 'Quick', time: '~2 min', sources: '15 sources', icon: Search },
-                { id: 'standard', label: 'Standard', time: '~5 min', sources: '30 sources', icon: Lightbulb },
-                { id: 'deep', label: 'Deep', time: '~10 min', sources: '50 sources', icon: MessageSquare },
+                { id: 'quick' as const, label: 'Quick', time: '~2 min', sources: '15 sources', icon: Search },
+                { id: 'standard' as const, label: 'Standard', time: '~5 min', sources: '30 sources', icon: Lightbulb },
+                { id: 'deep' as const, label: 'Deep', time: '~10 min', sources: '50 sources', icon: MessageSquare },
               ].map((mode) => {
                 const Icon = mode.icon;
+                const isSelected = selectedMode === mode.id;
                 return (
                   <button
                     key={mode.id}
-                    className="p-4 border-2 border-violet-500 bg-violet-50 rounded-xl text-center"
+                    onClick={() => setSelectedMode(mode.id)}
+                    className={`p-4 border-2 rounded-xl text-center transition-all ${
+                      isSelected
+                        ? 'border-violet-500 bg-violet-50 ring-2 ring-violet-200'
+                        : 'border-gray-200 bg-white hover:border-violet-300 hover:bg-violet-50/50'
+                    }`}
                   >
-                    <Icon className="w-6 h-6 mx-auto mb-2 text-violet-600" />
-                    <div className="font-semibold text-violet-900">{mode.label}</div>
-                    <div className="text-sm text-violet-600">{mode.time}</div>
-                    <div className="text-xs text-violet-500">{mode.sources}</div>
+                    <Icon className={`w-6 h-6 mx-auto mb-2 ${isSelected ? 'text-violet-600' : 'text-gray-400'}`} />
+                    <div className={`font-semibold ${isSelected ? 'text-violet-900' : 'text-gray-700'}`}>{mode.label}</div>
+                    <div className={`text-sm ${isSelected ? 'text-violet-600' : 'text-gray-500'}`}>{mode.time}</div>
+                    <div className={`text-xs ${isSelected ? 'text-violet-500' : 'text-gray-400'}`}>{mode.sources}</div>
                   </button>
                 );
               })}

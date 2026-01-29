@@ -27,7 +27,8 @@ class BaseAgent(ABC):
         self.name = name
         self.model = model
         self.ollama_url = ollama_url
-        self.http_client = httpx.AsyncClient(timeout=120.0)
+        # Longer timeout for LLM operations (can take several minutes for large context)
+        self.http_client = httpx.AsyncClient(timeout=300.0)
     
     async def chat(
         self, 

@@ -8,6 +8,7 @@ export interface PlanningData {
   customAngle: string;
   subQuestions: string[];
   userModifiedSubQuestions: string[];
+  mode: 'quick' | 'standard' | 'deep';
 }
 
 // ============== Research Types ==============
