@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5:7b"
 
+    # Search settings
+    search_provider: str = "tavily"  # "tavily" or "duckduckgo"
+    tavily_api_key: Optional[str] = None
+
     # Request settings
     llm_timeout: int = 300  # seconds
     max_tokens: int = 4000

@@ -5,10 +5,13 @@ import time
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 import structlog
+import httpx
 
 # Use the new ddgs package (renamed from duckduckgo_search)
 from ddgs import DDGS
 from ddgs.exceptions import DDGSException, RatelimitException, TimeoutException
+
+from app.core.config import settings
 
 logger = structlog.get_logger()
 
@@ -61,10 +64,29 @@ class SearchEngine:
         """
         results = []
 
-        # Try DuckDuckGo first (free, no API key)
+        # Try Tavily first if configured
+        if settings.search_provider == "tavily" and settings.tavily_api_key:
+            try:
+                tavily_results = await self._search_tavily(query, max_results)
+                results.extend(tavily_results)
+                logger.info(
+                    "Tavily search completed",
+                    query=query,
+                    result_count=len(tavily_results)
+                )
+                if len(results) >= max_results:
+                    return results[:max_results]
+            except Exception as e:
+                logger.warning(
+                    "Tavily search failed, falling back to DuckDuckGo",
+                    query=query,
+                    error=str(e)
+                )
+
+        # Fall back to DuckDuckGo
         try:
             ddgs_results = await self._search_duckduckgo_with_retry(
-                query, max_results, recency_days
+                query, max_results - len(results), recency_days
             )
             results.extend(ddgs_results)
             logger.info(
@@ -93,14 +115,40 @@ class SearchEngine:
                 error_type=type(e).__name__
             )
 
-        # If we got enough results, return them
-        if len(results) >= max_results:
-            return results[:max_results]
-
-        # Otherwise, try to get more from other sources
-        # (Could add SerpAPI, Google Custom Search, etc. here)
-
         return results[:max_results]
+
+    async def _search_tavily(
+        self,
+        query: str,
+        max_results: int
+    ) -> List[SearchResult]:
+        """Search using Tavily API (AI-optimized search)."""
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://api.tavily.com/search",
+                json={
+                    "api_key": settings.tavily_api_key,
+                    "query": query,
+                    "max_results": max_results,
+                    "search_depth": "advanced",
+                    "include_answer": False,
+                    "include_raw_content": False,
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            return [
+                SearchResult(
+                    title=r.get("title", ""),
+                    url=r.get("url", ""),
+                    snippet=r.get("content", ""),
+                    source="tavily",
+                    rank=i
+                )
+                for i, r in enumerate(data.get("results", []))
+                if r.get("url")
+            ]
     
     async def _rate_limit(self) -> None:
         """Apply rate limiting between requests."""
