@@ -295,16 +295,86 @@ cd backend
 python test_components.py
 ```
 
+## Scaling Considerations
+
+### Current Limits
+
+| Component | 50 sources | 200 sources | 1000 sources |
+|-----------|------------|-------------|--------------|
+| **Crawling** | ~2 min | ~8 min | ~40 min+ |
+| **LLM Context** | Fits in prompt | Needs batching | Needs hierarchical |
+| **Memory** | ~100MB | ~400MB | ~2GB+ |
+| **Graph Viz** | Clean | Crowded | Unusable |
+| **Cost** | ~$1-2 | ~$5-10 | ~$25-50 |
+
+### Bottlenecks at Scale
+
+1. **LLM Context Window**: Current agents process 10-15 sources per prompt. At 1000 sources:
+   - Need batch processing (chunks of 10-15)
+   - Hierarchical synthesis (summarize batches → merge summaries)
+   - RAG-style retrieval (embed sources, retrieve relevant chunks per claim)
+
+2. **Knowledge Graph Visualization**: D3 force-directed graph degrades at 500+ nodes
+   - Need auto-clustering of related nodes
+   - Hierarchical/tree view option
+   - Filter by confidence threshold
+
+3. **Web Crawling**: Rate limiting and timeouts become significant
+   - Domain-aware rate limiting
+   - Connection pooling
+   - Parallel worker pool with backoff
+
+4. **Memory**: Source text storage grows linearly
+   - Stream processing instead of loading all
+   - Database-backed storage with lazy loading
+   - Compress/summarize sources after extraction
+
+### Proposed Architecture for 1000+ Sources
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    HIERARCHICAL PROCESSING                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. SEARCH & CRAWL (parallel workers)                            │
+│     └─ 1000 sources → dedupe → 600 unique                        │
+│                                                                  │
+│  2. BATCH EXTRACTION (10 batches of 60)                          │
+│     └─ Each batch → Scout/Skeptic/Analyst → batch claims         │
+│                                                                  │
+│  3. CLAIM CLUSTERING                                             │
+│     └─ 600 claims → embed → cluster → 50 claim groups            │
+│                                                                  │
+│  4. HIERARCHICAL GRAPH                                           │
+│     └─ Top-level: claim groups                                   │
+│     └─ Drill-down: individual claims/sources                     │
+│                                                                  │
+│  5. SYNTHESIS (on clustered claims)                              │
+│     └─ Synthesizer works on 50 claim groups, not 600 claims      │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ## Next Steps / Future Enhancements
 
-1. **Medical Mode**: PICO extraction, evidence hierarchy, PubMed integration
-2. **PDF Support**: Extract text from uploaded PDFs
-3. **Custom Prompts**: User-configurable agent prompts
-4. **Export Formats**: PDF, Word document export
-5. **Session Comparison**: Compare multiple research sessions
-6. **Collaborative**: Multi-user research sessions
-7. **API Keys**: SerpAPI for more search results
-8. **GPU Acceleration**: Faster inference with local GPU
+### Near-term
+1. **Batch Processing**: Process sources in configurable batch sizes
+2. **Claim Clustering**: Group similar claims using embeddings
+3. **Graph Filtering**: Filter nodes by confidence, type, or cluster
+4. **Progress Persistence**: Resume interrupted research sessions
+
+### Medium-term
+5. **Medical Mode**: PICO extraction, evidence hierarchy, PubMed integration
+6. **PDF Support**: Extract text from uploaded PDFs
+7. **RAG Retrieval**: Embedding-based source retrieval for synthesis
+8. **Hierarchical Graph**: Zoomable graph with cluster expansion
+
+### Long-term
+9. **Custom Prompts**: User-configurable agent prompts
+10. **Export Formats**: PDF, Word document export
+11. **Session Comparison**: Compare multiple research sessions
+12. **Collaborative**: Multi-user research sessions
+13. **GPU Acceleration**: Faster local inference
 
 ## Performance
 
