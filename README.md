@@ -26,7 +26,7 @@ User Query → Planning → Search → Crawl → Curate → Extract → Verify �
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.12+ (uses modern datetime features)
 - Node.js 18+
 - Ollama (local LLM server)
 
@@ -55,9 +55,10 @@ ollama pull llama3.1:70b       # Requires 40GB+ RAM
 
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+playwright install chromium  # Required for web crawling
 ```
 
 ### 4. Setup Frontend
@@ -72,7 +73,7 @@ npm install
 Terminal 1 - Backend:
 ```bash
 cd backend
-source venv/bin/activate
+source .venv/bin/activate
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -189,6 +190,7 @@ self.synthesizer = SynthesizerAgent(model="deepseek-chat")  # Uses API
 - `GET /api/sessions/{id}/graph` - Get graph data
 - `GET /api/sessions/{id}/sources` - Get sources
 - `GET /api/sessions/{id}/claims` - Get claims
+- `DELETE /api/sessions/{id}` - Delete session
 
 ### WebSocket
 

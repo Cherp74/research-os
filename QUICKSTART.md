@@ -37,7 +37,7 @@ research-os/
 
 ## Prerequisites
 
-1. **Python 3.9+**
+1. **Python 3.12+** (uses modern datetime features)
 2. **Node.js 18+**
 3. **Ollama** (local LLM server)
 
@@ -69,9 +69,10 @@ If you prefer manual setup:
 ### Backend
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+playwright install chromium
 uvicorn app.main:app --reload --port 8000
 ```
 
