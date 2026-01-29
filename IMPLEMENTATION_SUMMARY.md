@@ -1,8 +1,8 @@
-# Research OS v1.0 - Implementation Summary
+# Research OS v1.1 - Implementation Summary
 
 ## What Was Built
 
-A complete, production-ready multi-agent research system that runs locally on your machine.
+A complete, production-ready multi-agent research system with cloud LLM support via OpenRouter.
 
 ### Backend (Python/FastAPI)
 
@@ -12,7 +12,7 @@ A complete, production-ready multi-agent research system that runs locally on yo
 |-----------|------|-------------|
 | **Database** | `app/db/database.py` | SQLite with vector support, stores sources, claims, sessions |
 | **Models** | `app/db/models.py` | Pydantic models for all data types |
-| **Search** | `app/core/search.py` | DuckDuckGo search with fallback |
+| **Search** | `app/core/search.py` | OpenRouter web search (Exa) + DuckDuckGo fallback |
 | **Crawler** | `app/core/crawler.py` | Async web crawler (httpx + Playwright) |
 | **Curator** | `app/core/curator.py` | Deduplication, credibility scoring, filtering |
 | **Knowledge Graph** | `app/core/knowledge_graph.py` | NetworkX graph with D3 export |
@@ -24,10 +24,10 @@ A complete, production-ready multi-agent research system that runs locally on yo
 
 | Agent | File | Role | Default Model |
 |-------|------|------|---------------|
-| **Scout** | `app/agents/specialized.py` | Finds trends, diverse perspectives | Gemini Flash 1.5 |
-| **Skeptic** | `app/agents/specialized.py` | Identifies biases, contradictions | DeepSeek Chat |
-| **Analyst** | `app/agents/specialized.py` | Extracts structured claims | Qwen 2.5 72B |
-| **Synthesizer** | `app/agents/specialized.py` | Generates final report | Claude Opus 4 |
+| **Scout** | `app/agents/specialized.py` | Finds trends, diverse perspectives | `google/gemini-2.5-flash` |
+| **Skeptic** | `app/agents/specialized.py` | Identifies biases, contradictions | `deepseek/deepseek-chat-v3.1` |
+| **Analyst** | `app/agents/specialized.py` | Extracts structured claims | `qwen/qwen3-max` |
+| **Synthesizer** | `app/agents/specialized.py` | Generates final report | `anthropic/claude-opus-4` |
 | **Base** | `app/agents/base.py` | LLM provider abstraction, agent orchestrator | - |
 
 #### Configuration
@@ -83,7 +83,7 @@ A complete, production-ready multi-agent research system that runs locally on yo
 │     └─ Decompose query into sub-queries                                  │
 │                                                                          │
 │  2. SEARCHING (10%)                                                      │
-│     └─ DuckDuckGo search for each sub-query                              │
+│     └─ OpenRouter web search (Exa) or DuckDuckGo fallback                │
 │                                                                          │
 │  3. CRAWLING (20%)                                                       │
 │     └─ Async crawl URLs, extract text                                    │
@@ -142,7 +142,7 @@ research-os/
 │   │   │   ├── __init__.py
 │   │   │   ├── config.py        # Settings (pydantic-settings)
 │   │   │   ├── planner.py       # Query understanding and decomposition
-│   │   │   ├── search.py        # DuckDuckGo search
+│   │   │   ├── search.py        # Multi-provider search (OpenRouter/DuckDuckGo)
 │   │   │   ├── crawler.py       # Async web crawler
 │   │   │   ├── curator.py       # Source curation
 │   │   │   ├── knowledge_graph.py # NetworkX graph
@@ -187,6 +187,11 @@ research-os/
 - ✅ Multi-provider support (OpenRouter + Ollama fallback)
 - ✅ Per-agent model configuration
 - ✅ JSON-structured outputs
+
+### 1.5 Web Search
+- ✅ OpenRouter web search with Exa plugin (primary)
+- ✅ DuckDuckGo fallback (free)
+- ✅ AI-optimized search results
 
 ### 2. Knowledge Graph
 - ✅ NetworkX-based graph
@@ -249,10 +254,12 @@ cp .env.example .env
 Default model configuration:
 | Agent | Model | Purpose |
 |-------|-------|---------|
-| Scout | `google/gemini-flash-1.5` | Fast, broad search |
-| Skeptic | `deepseek/deepseek-chat` | Critical reasoning |
-| Analyst | `qwen/qwen-2.5-72b-instruct` | Structured extraction |
+| Scout | `google/gemini-2.5-flash` | Fast, broad search |
+| Skeptic | `deepseek/deepseek-chat-v3.1` | Critical reasoning |
+| Analyst | `qwen/qwen3-max` | Structured extraction |
 | Synthesizer | `anthropic/claude-opus-4` | Final report synthesis |
+
+Web search uses OpenRouter's Exa plugin (~$0.02/search).
 
 **Option B: Ollama (Local/Free)**
 ```bash
@@ -315,12 +322,20 @@ python test_components.py
 
 ## Cost
 
-- **Free tier**: Uses DuckDuckGo (no API key), Ollama (local models)
-- **OpenRouter**: Estimated ~$0.50-2.00 per research session depending on depth
-  - Gemini Flash: ~$0.10/M tokens
-  - DeepSeek: ~$0.14/M tokens
-  - Qwen 72B: ~$0.50/M tokens
-  - Claude Opus: ~$15/M tokens (used only for final synthesis)
+- **Free tier**: Uses DuckDuckGo search, Ollama local models
+- **OpenRouter**: Estimated ~$0.50-3.00 per research session depending on depth
+  - Web search (Exa): ~$0.02/query
+  - Gemini 2.5 Flash: ~$0.10/M tokens
+  - DeepSeek v3.1: ~$0.14/M tokens
+  - Qwen3 Max: ~$0.50/M tokens
+  - Claude Opus 4: ~$15/M tokens (synthesis only)
+
+## Version History
+
+| Version | Tag | Description |
+|---------|-----|-------------|
+| v1.0 | `local-ollama-working` | Local Ollama models, DuckDuckGo search |
+| v1.1 | `v1.1-openrouter` | OpenRouter multi-model, Exa web search |
 
 ## License
 
