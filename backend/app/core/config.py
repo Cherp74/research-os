@@ -15,11 +15,11 @@ class Settings(BaseSettings):
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     # Model configuration for different agents
-    model_scout: str = "google/gemini-flash-1.5"
-    model_skeptic: str = "deepseek/deepseek-chat"
-    model_analyst: str = "qwen/qwen-2.5-72b-instruct"
-    model_synthesizer: str = "anthropic/claude-opus-4-20250514"
-    model_default: str = "google/gemini-flash-1.5"
+    model_scout: str = "google/gemini-2.5-flash"
+    model_skeptic: str = "deepseek/deepseek-chat-v3.1"
+    model_analyst: str = "qwen/qwen3-max"
+    model_synthesizer: str = "anthropic/claude-opus-4"
+    model_default: str = "google/gemini-2.5-flash"
 
     # Ollama settings (fallback)
     ollama_url: str = "http://localhost:11434"

@@ -156,7 +156,7 @@ class SearchEngine:
                     "X-Title": "Research OS"
                 },
                 json={
-                    "model": "google/gemini-flash-1.5",
+                    "model": "google/gemini-2.5-flash",
                     "plugins": [
                         {
                             "id": "web",
