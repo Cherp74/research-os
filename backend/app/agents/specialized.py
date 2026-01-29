@@ -15,7 +15,7 @@ class ScoutAgent(BaseAgent):
     Looks for emerging trends, breaking news, and diverse perspectives.
     """
     
-    def __init__(self, model: str = "qwen2.5:7b"):
+    def __init__(self, model: str = None):
         super().__init__("scout", model)
         self.system_prompt = """You are a research scout. Your job is to find diverse, recent, 
 and broad coverage of topics. Look for emerging trends, breaking news, and diverse perspectives.
@@ -117,7 +117,7 @@ class SkepticAgent(BaseAgent):
     Questions methodology, funding sources, and sample sizes.
     """
     
-    def __init__(self, model: str = "qwen2.5:7b"):
+    def __init__(self, model: str = None):
         super().__init__("skeptic", model)
         self.system_prompt = """You are a research skeptic. Your job is to find gaps, biases, 
 and contradictions in the evidence. Question methodology, funding sources, and sample sizes.
@@ -238,7 +238,7 @@ class AnalystAgent(BaseAgent):
     Focuses on factual precision and evidence quality.
     """
     
-    def __init__(self, model: str = "qwen2.5:7b"):
+    def __init__(self, model: str = None):
         super().__init__("analyst", model)
         self.system_prompt = """You are a research analyst. Extract structured claims, 
 entities, and relationships with high precision. Focus on: who said what, based on what evidence.
@@ -354,7 +354,7 @@ class SynthesizerAgent(BaseAgent):
     This is the "Chairman" agent that produces the final output.
     """
 
-    def __init__(self, model: str = "qwen2.5:7b"):
+    def __init__(self, model: str = None):
         super().__init__("synthesizer", model)
         self.system_prompt = """You are a research synthesizer. Your job is to create
 a comprehensive, well-cited research report from multiple agent analyses and a knowledge graph.
@@ -469,10 +469,10 @@ Format all citations as [Source: URL] for verification."""
 
 
 # Factory function for creating the agent swarm
-def create_agent_swarm(model: str = "qwen2.5:7b") -> List[BaseAgent]:
-    """Create the full agent swarm."""
+def create_agent_swarm() -> List[BaseAgent]:
+    """Create the full agent swarm. Each agent uses its configured model."""
     return [
-        ScoutAgent(model),
-        SkepticAgent(model),
-        AnalystAgent(model)
+        ScoutAgent(),
+        SkepticAgent(),
+        AnalystAgent()
     ]

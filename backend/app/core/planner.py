@@ -7,10 +7,81 @@ import json
 import structlog
 from typing import List, Dict, Any
 
+from app.core.config import settings
+
 logger = structlog.get_logger()
 
-OLLAMA_URL = "http://localhost:11434"
-MODEL = "qwen2.5:7b"
+
+async def _llm_generate(prompt: str, format_json: bool = True) -> str:
+    """
+    Generate text using the configured LLM provider.
+
+    Args:
+        prompt: The prompt to send
+        format_json: Whether to request JSON output
+
+    Returns:
+        Generated text response
+    """
+    async with httpx.AsyncClient(timeout=settings.llm_timeout) as client:
+        if settings.llm_provider == "openrouter":
+            return await _generate_openrouter(client, prompt, format_json)
+        else:
+            return await _generate_ollama(client, prompt, format_json)
+
+
+async def _generate_openrouter(client: httpx.AsyncClient, prompt: str, format_json: bool) -> str:
+    """Generate using OpenRouter API."""
+    if not settings.openrouter_api_key:
+        raise ValueError("OPENROUTER_API_KEY not set in environment")
+
+    headers = {
+        "Authorization": f"Bearer {settings.openrouter_api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://research-os.local",
+        "X-Title": "Research OS"
+    }
+
+    payload = {
+        "model": settings.model_default,  # Use default model for planning
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3,
+        "max_tokens": settings.max_tokens,
+    }
+
+    if format_json:
+        payload["response_format"] = {"type": "json_object"}
+
+    response = await client.post(
+        f"{settings.openrouter_base_url}/chat/completions",
+        headers=headers,
+        json=payload
+    )
+    response.raise_for_status()
+
+    result = response.json()
+    return result["choices"][0]["message"]["content"]
+
+
+async def _generate_ollama(client: httpx.AsyncClient, prompt: str, format_json: bool) -> str:
+    """Generate using Ollama API."""
+    payload = {
+        "model": settings.ollama_model,
+        "prompt": prompt,
+        "stream": False,
+    }
+
+    if format_json:
+        payload["format"] = "json"
+
+    response = await client.post(
+        f"{settings.ollama_url}/api/generate",
+        json=payload
+    )
+    response.raise_for_status()
+
+    result = response.json()
+    return result["response"]
 
 
 async def understand_query(original_query: str) -> Dict[str, Any]:
@@ -38,28 +109,15 @@ Respond in JSON format:
 Make the understood_query comprehensive but focused. It should capture the full intent."""
 
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{OLLAMA_URL}/api/generate",
-                json={
-                    "model": MODEL,
-                    "prompt": prompt,
-                    "stream": False,
-                    "format": "json"
-                },
-                timeout=60.0
-            )
-            response.raise_for_status()
-            result = response.json()
-            
-            data = json.loads(result["response"])
-            return {
-                "understood_query": data.get("understood_query", original_query),
-                "key_concepts": data.get("key_concepts", []),
-                "research_domain": data.get("research_domain", "general"),
-                "clarification_needed": data.get("clarification_needed", False),
-                "suggested_clarification": data.get("suggested_clarification", "")
-            }
+        response_text = await _llm_generate(prompt, format_json=True)
+        data = json.loads(response_text)
+        return {
+            "understood_query": data.get("understood_query", original_query),
+            "key_concepts": data.get("key_concepts", []),
+            "research_domain": data.get("research_domain", "general"),
+            "clarification_needed": data.get("clarification_needed", False),
+            "suggested_clarification": data.get("suggested_clarification", "")
+        }
     except Exception as e:
         logger.error(f"Error understanding query: {e}")
         return {
@@ -94,22 +152,9 @@ Respond in JSON format:
 Make angles concrete and actionable for web research."""
 
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{OLLAMA_URL}/api/generate",
-                json={
-                    "model": MODEL,
-                    "prompt": prompt,
-                    "stream": False,
-                    "format": "json"
-                },
-                timeout=60.0
-            )
-            response.raise_for_status()
-            result = response.json()
-            
-            data = json.loads(result["response"])
-            return data.get("angles", get_default_angles(domain))
+        response_text = await _llm_generate(prompt, format_json=True)
+        data = json.loads(response_text)
+        return data.get("angles", get_default_angles(domain))
     except Exception as e:
         logger.error(f"Error suggesting angles: {e}")
         return get_default_angles(domain)
@@ -188,22 +233,9 @@ Respond in JSON format:
 Make sub-questions concrete enough that someone could search for each one independently."""
 
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{OLLAMA_URL}/api/generate",
-                json={
-                    "model": MODEL,
-                    "prompt": prompt,
-                    "stream": False,
-                    "format": "json"
-                },
-                timeout=60.0
-            )
-            response.raise_for_status()
-            result = response.json()
-            
-            data = json.loads(result["response"])
-            return data.get("sub_questions", [understood_query])
+        response_text = await _llm_generate(prompt, format_json=True)
+        data = json.loads(response_text)
+        return data.get("sub_questions", [understood_query])
     except Exception as e:
         logger.error(f"Error decomposing query: {e}")
         return [understood_query]
